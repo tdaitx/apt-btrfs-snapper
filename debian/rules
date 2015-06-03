@@ -18,10 +18,12 @@ override_dh_auto_build:
 
 override_dh_auto_install:
 	dh_auto_install
-	$(call py3sdo, setup.py install --root=$(CURDIR)/debian/apt-btrfs-snapshot --install-layout=deb)
+	$(call py3sdo, setup.py install --root=$(CURDIR)/debian/apt-btrfs-snapper --install-layout=deb)
 
 override_dh_auto_clean:
 	dh_auto_clean
 	rm -rf build
 	rm -rf *.egg-info
 
+override_dh_python3:
+	dh_python3 --shebang=/usr/bin/python3

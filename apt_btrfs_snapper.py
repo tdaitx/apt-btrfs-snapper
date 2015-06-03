@@ -26,15 +26,15 @@ import time
 import tempfile
 
 
-class AptBtrfsSnapshotError(Exception):
+class AptBtrfsSnapperError(Exception):
     pass
 
 
-class AptBtrfsNotSupportedError(AptBtrfsSnapshotError):
+class AptBtrfsNotSupportedError(AptBtrfsSnapperError):
     pass
 
 
-class AptBtrfsRootWithNoatimeError(AptBtrfsSnapshotError):
+class AptBtrfsRootWithNoatimeError(AptBtrfsSnapperError):
     pass
 
  
@@ -65,7 +65,7 @@ class LowLevelCommands(object):
                     'date' : split[3].strip(),
                     'text' : item
                 } 
-                if row['name'].startswith(AptBtrfsSnapshot.SNAP_PREFIX):
+                if row['name'].startswith(AptBtrfsSnapper.SNAP_PREFIX):
                     items.append(row) 
         return items;
                     
@@ -87,7 +87,7 @@ class LowLevelCommands(object):
         ret = subprocess.check_output(["snapper", "status", id+"..0" ], universal_newlines=True);
         return ret
 
-class AptBtrfsSnapshot(object):
+class AptBtrfsSnapper(object):
     """ the high level object that interacts with the snapshot system """
 
     # normal snapshot
@@ -181,10 +181,25 @@ class AptBtrfsSnapshot(object):
     
     def show_diff(self, snapshot):
         id = self.convert_name_to_id(snapshot)
-        
+        print("Please wait...\n")
         if id != -1:
             diff = self.commands.btrfs_snapshot_diff(id)
-            print(diff)
+            diff = diff.split("\n")
+            for line in diff:
+                items = line.split(" ")
+                try:
+                    bytes_cnt = ""
+                    if items[0][0] == "+" or items[0][0] == "c":
+                        bytes_cnt = os.path.getsize(items[1])
+                        bytes_cnt = self.humansize(bytes_cnt)
+                    
+                    line = items[0][0] + "  " + bytes_cnt.ljust(10) + " " + items[1]
+                   
+                except IndexError:
+                    pass
+                
+                print(line)
+                
             return True
         return False
     
@@ -222,3 +237,14 @@ class AptBtrfsSnapshot(object):
     def delete_snapshot(self, snapshot_name): 
         res = self.commands.btrfs_delete_snapshot(snapshot_name)
         return res
+    
+    def humansize(self, nbytes):
+        suffixes = ['b', 'kb', 'mb', 'gb', 'tb', 'pb']
+        if nbytes == 0: return '0 B'
+        i = 0
+        while nbytes >= 1024 and i < len(suffixes)-1:
+            nbytes /= 1024.
+            i += 1
+        f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
+        return '%s%s' % (f, suffixes[i])
+

@@ -30,12 +30,12 @@ import tempfile
 import gettext
 from gettext import gettext as _
 
-from apt_btrfs_snapshot import AptBtrfsSnapshot
+from apt_btrfs_snapper import AptBtrfsSnapper
 
 
 if __name__ == "__main__":
 
-    gettext.bindtextdomain("apt-btrfs-snapshot")
+    gettext.bindtextdomain("apt-btrfs-snapper")
 
     # command line parser
     description = _("Filesystem snapshot support for apt using snapper")
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         print(_("Sorry, you need to be root to run this program"))
         sys.exit(1)
 
-    apt_btrfs = AptBtrfsSnapshot()
+    apt_btrfs = AptBtrfsSnapper()
     if not apt_btrfs.snapshots_supported():
         print(_("Sorry, your system lacks support for the snapshot feature"))
         sys.exit(1)
@@ -102,7 +102,9 @@ if __name__ == "__main__":
         res = False
         if args.command == "supported":
             res = apt_btrfs.snapshots_supported()
-            if !res: 
+            if res:
+                print(_("Supported"))
+            else:
                 print(_("Not supported"))
         elif args.command == "snapshot":
             res = apt_btrfs.create_btrfs_root_snapshot()
@@ -128,6 +130,7 @@ if __name__ == "__main__":
         sys.exit(0)
     else:
         sys.exit(1)
+
 
 
 
