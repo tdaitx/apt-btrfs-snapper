@@ -1,30 +1,76 @@
-apt-btrfs-snapshot (0.3.1) quantal; urgency=low
+apt-btrfs-snapper (0.4.0) trusty; urgency=medium
+
+  * Added pre and post methods for use with apt-get
+
+ -- Kyle Agronick <agronick@gmail.com>  Wed, 3 Jun 2015 20:34:50 +0100
+
+apt-btrfs-snapper (0.3.5) trusty; urgency=medium
+
+  * Rewrite the program to use snapper instead of btrfs-progs
+
+ -- Kyle Agronick <agronick@gmail.com>  Mon, 1 Jun 2015 21:36:50 +0100
+
+
+apt-btrfs-snapper (0.3.4.2) trusty; urgency=medium
+
+  * Rewrite the python shebang path to /usr/bin/python3.
+
+ -- Matthias Klose <doko@ubuntu.com>  Thu, 20 Feb 2014 16:13:50 +0100
+
+apt-btrfs-snapper (0.3.4.1) raring; urgency=low
+
+  * Fix FTBFS due to newer, more strict, pep8.
+
+ -- Dmitrijs Ledkovs <dmitrij.ledkov@ubuntu.com>  Sun, 06 Jan 2013 02:41:49 +0000
+
+apt-btrfs-snapper (0.3.4) raring; urgency=low
+
+  * Build depend on python3-all.
+
+ -- Dmitrijs Ledkovs <dmitrij.ledkov@ubuntu.com>  Fri, 26 Oct 2012 10:23:37 +0100
+
+apt-btrfs-snapper (0.3.3) quantal; urgency=low
+
+  * add missing pep8 depedency to fix FTBFS
+
+ -- Michael Vogt <michael.vogt@ubuntu.com>  Thu, 12 Jul 2012 13:30:25 +0200
+
+apt-btrfs-snapper (0.3.2) quantal; urgency=low
+
+  * merged fix from Stavros Korokithakis for set_default, thanks.
+  * tests/test_pep8.py:
+    - add test to ensure we are pep8 clean
+  * cleanup to be fully pep8 clean
+
+ -- Michael Vogt <michael.vogt@ubuntu.com>  Thu, 12 Jul 2012 11:38:26 +0200
+
+apt-btrfs-snapper (0.3.1) quantal; urgency=low
 
   * Add missing build dependency on pyflakes for test_pyflakes.py
 
  -- Dmitrijs Ledkovs <dmitrij.ledkov@ubuntu.com>  Tue, 12 Jun 2012 12:10:17 +0100
 
-apt-btrfs-snapshot (0.3) quantal; urgency=low
+apt-btrfs-snapper (0.3) quantal; urgency=low
 
   [ Michael Vogt ]
-  * apt_btrfs_snapshot.py, test/test_apt_btrfs_snapshot.py:
+  * apt_btrfs_snapper.py, test/test_apt_btrfs_snapper.py:
     - disable "delete-older-than" command if noatime is in use on 
       the snapshot fs (LP: #833980)
-  * merge lp:~brian-murray/apt-btrfs-snapshot/fix-vcs/, many thanks!
-  * apt_btrfs_snapshot.py:
+  * merge lp:~brian-murray/apt-btrfs-snapper/fix-vcs/, many thanks!
+  * apt_btrfs_snapper.py:
     - be even more robust against invalid fstab entries 
       (LP: #873411 comment #7)
   * test/test_pyflakes.py:
     - add test that ensures that its pyflakes clean
 
   [ Dmitrijs Ledkovs ]
-  * apt_btrfs_snapshot.py, apt-btrfs-snapshot:
+  * apt_btrfs_snapper.py, apt-btrfs-snapper:
     - port to python3
-  * apt_btrfs_snapshot.py:
+  * apt_btrfs_snapper.py:
     - fix pyflakes warning use 'AptBtrfsNotSupportedError' instead of
-      undefined name 'AptBtrfsSnapshotNotSupportedError'
-  * test/test_apt_btrfs_snapshot.py:
-    - remove unused imports 'LowLevelCommands' and 'apt_btrfs_snapshot'
+      undefined name 'AptBtrfsSnapperNotSupportedError'
+  * test/test_apt_btrfs_snapper.py:
+    - remove unused imports 'LowLevelCommands' and 'apt_btrfs_snapper'
     - mock sys.stdout and sys.stderr to avoid confusing and spurious output
     - mock /sbin/btrfs to allow running unit-tests without btrfs-tools
   * debian/rules:
@@ -36,54 +82,54 @@ apt-btrfs-snapshot (0.3) quantal; urgency=low
   
  -- Michael Vogt <michael.vogt@ubuntu.com>  Tue, 12 Jun 2012 12:06:31 +0200
 
-apt-btrfs-snapshot (0.2.1build1) precise; urgency=low
+apt-btrfs-snapper (0.2.1build1) precise; urgency=low
 
   * Rebuild to drop python2.6 dependencies.
 
  -- Matthias Klose <doko@ubuntu.com>  Sat, 31 Dec 2011 02:00:37 +0000
 
-apt-btrfs-snapshot (0.2.1) oneiric; urgency=low
+apt-btrfs-snapper (0.2.1) oneiric; urgency=low
 
-  * test/test_apt_btrfs_snapshot.py, test/data/fstab.bug872145:
+  * test/test_apt_btrfs_snapper.py, test/data/fstab.bug872145:
     - fix crash in fstab parsing (LP: #872145)
-  * apt_btrfs_snapshot.py:
+  * apt_btrfs_snapper.py:
     - test for /sbin/btrfs in snapshot_supported() as well (LP: #800908)
 
  -- Michael Vogt <michael.vogt@ubuntu.com>  Tue, 11 Oct 2011 10:17:41 +0200
 
-apt-btrfs-snapshot (0.2) oneiric; urgency=low
+apt-btrfs-snapper (0.2) oneiric; urgency=low
 
-  * return the right exit status when apt-btrfs-snapshot 
+  * return the right exit status when apt-btrfs-snapper 
     set-default is used
   * use argparse instead of home grown parser and add help
   * add i18n
 
  -- Michael Vogt <michael.vogt@ubuntu.com>  Wed, 20 Jul 2011 09:14:17 +0200
 
-apt-btrfs-snapshot (0.1.3) oneiric; urgency=low
+apt-btrfs-snapper (0.1.3) oneiric; urgency=low
 
-  * apt-btrfs-snapshot:
+  * apt-btrfs-snapper:
     - add "delete-older-than" command
-  * debian/apt-btrfs-snapshot.cron.weekly:
+  * debian/apt-btrfs-snapper.cron.weekly:
     - add cronjob to allow deleting old snapshots, defaulting to
       90 days (but overridable with the apt config variable
       APT::Snapshots::MaxAge)
 
  -- Michael Vogt <michael.vogt@ubuntu.com>  Tue, 19 Jul 2011 10:44:15 +0200
 
-apt-btrfs-snapshot (0.1.2) oneiric; urgency=low
+apt-btrfs-snapper (0.1.2) oneiric; urgency=low
 
   * ignore fs_freq and fs_passno in fstab if they don't exit,
     and add regression test (LP: #806065)
     
  -- Michael Vogt <michael.vogt@ubuntu.com>  Wed, 06 Jul 2011 17:06:36 +0200
 
-apt-btrfs-snapshot (0.1.1) natty; urgency=low
+apt-btrfs-snapper (0.1.1) natty; urgency=low
 
   * added TODO
   * move functionality into module for easy import from e.g.
     update-manager
-  * apt-btrfs-snapshot:
+  * apt-btrfs-snapper:
     - add supported argument
     - fix exit codes
   * data/80-btrfs-snapshot:
@@ -91,7 +137,7 @@ apt-btrfs-snapshot (0.1.1) natty; urgency=low
 
  -- Michael Vogt <michael.vogt@ubuntu.com>  Wed, 16 Feb 2011 17:52:48 +0100
 
-apt-btrfs-snapshot (0.1) natty; urgency=low
+apt-btrfs-snapper (0.1) natty; urgency=low
 
   * Initial Release.
 

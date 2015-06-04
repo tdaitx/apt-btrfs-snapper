@@ -22,8 +22,7 @@ import datetime
 import os
 import subprocess
 import sys
-import time
-import tempfile
+import time 
 
 
 class AptBtrfsSnapperError(Exception):
@@ -43,10 +42,11 @@ class AptBtrfsRootWithNoatimeError(AptBtrfsSnapperError):
 class LowLevelCommands(object):
     """ lowlevel commands invoked to perform various tasks like
         interact with mount and btrfs tools
-    """ 
+    """
+    CLEANUP_MODE='number'
     
-    def list(self):
-        ret = subprocess.check_output(["snapper", "list"], universal_newlines=True);
+    def btrfs_snapshot_list(self):
+        ret = subprocess.check_output(["snapper", "list", "-t", "pre-post"], universal_newlines=True)
         ret = ret.split("\n")
         i = 0; 
         items = []
@@ -57,23 +57,41 @@ class LowLevelCommands(object):
             split = item.split("|");
             if len(split) > 4: 
                 row = {
-                    'name' : split[6].strip(),
+                    'name' : split[4].strip(),
                     'id' : split[1].strip(),
-                    'cleanup' : split[5].strip(),
-                    'user_data' : split[7].strip(),
-                    'user' : split[4].strip(),
-                    'date' : split[3].strip(),
-                    'text' : item
+                    'type': 'pre',
+                    'cleanup' : self.CLEANUP_MODE,
+                    'user_data' : split[5].strip(), 
+                    'date' : split[2].strip(),
+                    'text' : item,
+                    'pre_id' : split[0].strip()
                 } 
                 if row['name'].startswith(AptBtrfsSnapper.SNAP_PREFIX):
                     items.append(row) 
         return items;
                     
+    def btrfs_snapshot_list_pre_post(self):
+        ret = subprocess.check_output(["snapper", "list", "-t", "pre-post"], universal_newlines=True);
+        lines = ret.split("\n")
+        i=0
+        out="" 
+        for line in lines: 
+            if i < 2:
+                out+=line + "\n"
+                i+=1
+            elif AptBtrfsSnapper.SNAP_PREFIX in line:
+                out+=line + "\n"
         
+        return out
 
-    def btrfs_subvolume_snapshot(self, description):
-        ret = subprocess.call(["snapper", "create", "-d", description, "-c", "timeline"])
-        return ret == 0
+    def btrfs_subvolume_snapshot(self, description, ctype, pre_id="-1"):
+        arguments = ["snapper", "create", "-d", description, "-c",
+                     self.CLEANUP_MODE, "--print-number", "-t", ctype]
+        if pre_id != -1:
+            arguments.append("--pre-number")
+            arguments.append(pre_id)
+        ret = subprocess.check_output(arguments, universal_newlines=True)
+        return ret.strip()
 
     def btrfs_delete_snapshot(self, id):
         ret = subprocess.call(["snapper", "delete", id]) 
@@ -95,6 +113,7 @@ class AptBtrfsSnapper(object):
     SNAPPER_TIME = "%a %d %b %Y %I:%M:%S %p %Z"
     # backname when changing
     BACKUP_PREFIX = SNAP_PREFIX + "old-root-"
+    PRE_ID_FILE = "/var/run/apt-btrfs-snapper-pre-id"
 
     def __init__(self): 
         self.commands = LowLevelCommands() 
@@ -111,12 +130,42 @@ class AptBtrfsSnapper(object):
         return datetime.datetime.now().replace(microsecond=0).isoformat(
             str('_'))
 
-    def create_btrfs_root_snapshot(self, additional_prefix=""): 
+    def create_btrfs_root_snapshot(self, additional_prefix="", stype="single", sid=-1):  
         snap_id = self._get_now_str()
-        name = self.SNAP_PREFIX + additional_prefix + snap_id;
-        res = self.commands.btrfs_subvolume_snapshot(name)
-        print("Created snapshot with snapper named " + name)
+        name = self.SNAP_PREFIX + additional_prefix + snap_id
+        res = self.commands.btrfs_subvolume_snapshot(name, stype, sid)
+        print("Created " + stype + " snapshot with snapper as " + name + " with id " + res)
         return res
+    
+    def create_btrfs_root_snapshot_pre(self, additional_prefix=""):
+        id_file = open(self.PRE_ID_FILE, 'r')
+        existing = id_file.read() 
+        if existing:
+            self.delete_snapshot(existing.strip())
+            print("Delted orphaned snapshot " + existing.strip())
+        
+        if os.path.exists(self.PRE_ID_FILE):
+            os.remove(self.PRE_ID_FILE)
+        id_file = open(self.PRE_ID_FILE, 'w+')
+        sid = self.create_btrfs_root_snapshot(additional_prefix, "pre") 
+        print("Created tmp file named " +  id_file.name)
+        id_file.truncate()
+        id_file.write(str(sid).strip())
+        id_file.close()
+        return sid
+    
+    def create_btrfs_root_snapshot_post(self, additional_prefix=""):
+        try:
+            id_file = open(self.PRE_ID_FILE, 'r')
+        except FileNotFoundError:
+            print("The pre snapshot ID was not found")
+            return False
+        sid = id_file.read()
+        sid = self.create_btrfs_root_snapshot(additional_prefix, "post", sid)
+        os.remove(id_file.name)
+        return sid
+        
+    
 
     def get_btrfs_root_snapshots_list(self, older_than=0, only_id=False):
         """ get the list of available snapshot
@@ -127,7 +176,7 @@ class AptBtrfsSnapper(object):
         if older_than == 0:
             older_than = time.time()
         
-        items = self.commands.list()
+        items = self.commands.btrfs_snapshot_list()
         for item in items:
             mtime = time.mktime(time.strptime(item['date'], self.SNAPPER_TIME));
             if( older_than > mtime ):
@@ -144,7 +193,7 @@ class AptBtrfsSnapper(object):
 
     def print_btrfs_root_snapshots(self):
         print("Available snapshots:")
-        print("  \n".join(self.get_btrfs_root_snapshots_list()))
+        print("  \n" + self.commands.btrfs_snapshot_list_pre_post());
         return True
 
     def _parse_older_than_to_unixtime(self, timefmt):
@@ -179,7 +228,7 @@ class AptBtrfsSnapper(object):
             return False
         return res
     
-    def show_diff(self, snapshot):
+    def show_diff(self, snapshot, post_snapshot):
         id = self.convert_name_to_id(snapshot)
         print("Please wait...\n")
         if id != -1:
@@ -215,7 +264,7 @@ class AptBtrfsSnapper(object):
             int(snapshot_name)
             id=snapshot_name
         except ValueError:  
-            list = self.commands.list();
+            list = self.commands.btrfs_snapshot_list();
             for item in list:
                 if item['name'].strip() == snapshot_name:
                     id=item['id']

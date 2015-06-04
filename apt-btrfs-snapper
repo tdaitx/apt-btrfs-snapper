@@ -55,6 +55,14 @@ if __name__ == "__main__":
     command = subparser.add_parser(
         "snapshot", help=_("Create a new snapshot"))
     command.set_defaults(command="snapshot")
+    # snapshot-pre
+    command = subparser.add_parser(
+        "pre-snap", help=_("Create a new snapshot before installing packages"))
+    command.set_defaults(command="pre-snap")
+    # snapshot-post
+    command = subparser.add_parser(
+        "post-snap", help=_("Create a new snapshot after installing packages"))
+    command.set_defaults(command="post-snap")
     # set-default
     command = subparser.add_parser(
         "set-default", help=_("Revert to previous snapshot"))
@@ -78,7 +86,8 @@ if __name__ == "__main__":
     command = subparser.add_parser(
         "diff", help=_("Show what was changed between a snapshot and now"))
     command.set_defaults(command="diff")
-    command.add_argument("snapshot") 
+    command.add_argument("presnapshot") 
+    command.add_argument("postsnapshot") 
 
     # parse args
     args = parser.parse_args()
@@ -108,6 +117,10 @@ if __name__ == "__main__":
                 print(_("Not supported"))
         elif args.command == "snapshot":
             res = apt_btrfs.create_btrfs_root_snapshot()
+        elif args.command == "pre-snap":
+            res = apt_btrfs.create_btrfs_root_snapshot_pre()
+        elif args.command == "post-snap":
+            res = apt_btrfs.create_btrfs_root_snapshot_post()
         elif args.command == "list":
             res = apt_btrfs.print_btrfs_root_snapshots()
         elif args.command == "set-default":
@@ -119,7 +132,7 @@ if __name__ == "__main__":
         elif args.command == "delete-older-than":
             res = apt_btrfs.clean_btrfs_root_snapshots_older_than(args.time)
         elif args.command == "diff":
-            res = apt_btrfs.show_diff(args.snapshot)
+            res = apt_btrfs.show_diff(args.presnapshot, args.postsnapshot)
         else:
             print(_("ERROR: Unhandled command: '%s'") % args.command)
     except AttributeError:

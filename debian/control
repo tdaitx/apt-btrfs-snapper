@@ -1,7 +1,7 @@
 Source: apt-btrfs-snapper
 Section: admin
 Priority: optional
-Maintainer: Michael Vogt <michael.vogt@ubuntu.com>
+Maintainer: Kyle Agronick <agronick@gmail.com>
 Build-Depends: debhelper (>= 7.0.50~),
                python3-all,
                python3-distutils-extra,
@@ -13,8 +13,7 @@ Build-Depends: debhelper (>= 7.0.50~),
                pep8,
 X-Python-Version: all
 X-Python3-Version: >= 3.2
-Standards-Version: 3.9.3
-Vcs-Bzr: https://code.launchpad.net/apt-btrfs-snapper
+Standards-Version: 3.9.3 
 
 Package: apt-btrfs-snapper
 Architecture: all
@@ -23,7 +22,7 @@ Depends: ${python:Depends},
          ${misc:Depends},
          btrfs-tools
 Description: Automatically create snapshot on apt operations
- This will create a btrfs snapshot of the root filesystem each time
+ This will create a snapper snapshot of the root filesystem each time
  that apt installs/removes/upgrades a software package. 
  . 
  A commandline tool called "apt-btrfs-snapper" is also provided

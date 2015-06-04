@@ -1,1 +1,2 @@
-DPkg::Pre-Invoke {"if [ -x /usr/bin/apt-btrfs-snapper ] && apt-btrfs-snapper supported; then apt-btrfs-snapper snapshot; fi "; };
+DPkg::Pre-Invoke {" apt-btrfs-snapper pre-snap "; };
+DPkg::Post-Invoke {" apt-btrfs-snapper post-snap "; };
