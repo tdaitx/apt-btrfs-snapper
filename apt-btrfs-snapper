@@ -43,6 +43,7 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true", default=False,
                         help="enable debug output")
     subparser = parser.add_subparsers(title="Commands")
+    
     # supported
     command = subparser.add_parser(
         "supported", help=_("Print if snapshots are supported"))
@@ -63,11 +64,11 @@ if __name__ == "__main__":
     command = subparser.add_parser(
         "post-snap", help=_("Create a new snapshot after installing packages"))
     command.set_defaults(command="post-snap")
-    # set-default
+    # restore
     command = subparser.add_parser(
-        "set-default", help=_("Revert to previous snapshot"))
+        "restore", help=_("Revert to previous snapshot"))
     command.add_argument("snapshot")
-    command.set_defaults(command="set-default")
+    command.set_defaults(command="restore")
     # delete
     command = subparser.add_parser(
         "delete", help=_("Delete snapshot"))
@@ -87,7 +88,11 @@ if __name__ == "__main__":
         "diff", help=_("Show what was changed between a snapshot and now"))
     command.set_defaults(command="diff")
     command.add_argument("presnapshot") 
-    command.add_argument("postsnapshot") 
+    command.add_argument("postsnapshot")  
+    #userdata
+    command = subparser.add_parser(
+        "userdata", help=_("To be used by the system to add the packages installed to the snapshot"))
+    command.set_defaults(command="userdata")
 
     # parse args
     args = parser.parse_args()
@@ -97,6 +102,7 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
+ 
 
     if os.getuid() != 0:
         print(_("Sorry, you need to be root to run this program"))
@@ -105,16 +111,15 @@ if __name__ == "__main__":
     apt_btrfs = AptBtrfsSnapper()
     if not apt_btrfs.snapshots_supported():
         print(_("Sorry, your system lacks support for the snapshot feature"))
-        sys.exit(1)
- 
-    try:
-        res = False
+        sys.exit(1) 
+    try:   
+        res = False 
         if args.command == "supported":
             res = apt_btrfs.snapshots_supported()
             if res:
                 print(_("Supported"))
             else:
-                print(_("Not supported"))
+                print(_("Not supported"))  
         elif args.command == "snapshot":
             res = apt_btrfs.create_btrfs_root_snapshot()
         elif args.command == "pre-snap":
@@ -123,7 +128,7 @@ if __name__ == "__main__":
             res = apt_btrfs.create_btrfs_root_snapshot_post()
         elif args.command == "list":
             res = apt_btrfs.print_btrfs_root_snapshots()
-        elif args.command == "set-default":
+        elif args.command == "restore":
             res = apt_btrfs.command_set_default(args.snapshot)
         elif args.command == "delete":
             res = apt_btrfs.delete_snapshot(args.snapshot)
@@ -133,10 +138,12 @@ if __name__ == "__main__":
             res = apt_btrfs.clean_btrfs_root_snapshots_older_than(args.time)
         elif args.command == "diff":
             res = apt_btrfs.show_diff(args.presnapshot, args.postsnapshot)
+        elif args.command == "userdata":
+            res = apt_btrfs.update_installed_packages()
         else:
             print(_("ERROR: Unhandled command: '%s'") % args.command)
-    except AttributeError:
-        print(parser.print_usage())
+    except AttributeError: 
+        print(parser.print_help()) 
 
     # return the right exit code
     if res:

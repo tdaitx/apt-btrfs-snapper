@@ -22,8 +22,7 @@ import datetime
 import os
 import subprocess
 import sys
-import time 
-
+import time   
 
 class AptBtrfsSnapperError(Exception):
     pass
@@ -56,6 +55,7 @@ class LowLevelCommands(object):
                 continue;
             split = item.split("|");
             if len(split) > 4: 
+                 
                 row = {
                     'name' : split[4].strip(),
                     'id' : split[1].strip(),
@@ -74,14 +74,13 @@ class LowLevelCommands(object):
         ret = subprocess.check_output(["snapper", "list", "-t", "pre-post"], universal_newlines=True);
         lines = ret.split("\n")
         i=0
-        out="" 
+        out=""  
         for line in lines: 
-            if i < 2:
-                out+=line + "\n"
+            if i < 1:
+                out+=line[0:117].replace("Description", "Name") + "\n"
                 i+=1
-            elif AptBtrfsSnapper.SNAP_PREFIX in line:
-                out+=line + "\n"
-        
+            elif AptBtrfsSnapper.SNAP_PREFIX in line: 
+                out+=line[0:117] + "\n" 
         return out
 
     def btrfs_subvolume_snapshot(self, description, ctype, pre_id="-1"):
@@ -93,37 +92,53 @@ class LowLevelCommands(object):
         ret = subprocess.check_output(arguments, universal_newlines=True)
         return ret.strip()
 
-    def btrfs_delete_snapshot(self, id):
-        ret = subprocess.call(["snapper", "delete", id]) 
+    def btrfs_delete_snapshot(self, sid):
+        ret = subprocess.call(["snapper", "delete", sid]) 
         return ret == 0
     
-    def btrfs_restore_snapshot(self, id):
-        ret = subprocess.call(["snapper", "undochange", id+"..0"])
+    def btrfs_restore_snapshot(self, sid):
+        ret = subprocess.call(["snapper", "undochange", sid+"..0"])
         return ret == 0;
     
-    def btrfs_snapshot_diff(self, id):
-        ret = subprocess.check_output(["snapper", "status", id+"..0" ], universal_newlines=True);
+    def btrfs_snapshot_diff(self, sid, id2):
+        ret = subprocess.check_output(["snapper", "status", sid+".."+id2 ], universal_newlines=True);
         return ret
+    
+    def btrfs_snapshot_userdata(self, sid, data):
+        if len(data.strip()) < 2:
+            return False
+        
+        data = "Packages to be installed=" + data
+        ret = subprocess.call(['snapper', 'modify', '--userdata', data.strip(), sid ])
+        return ret == 0;
 
 class AptBtrfsSnapper(object):
     """ the high level object that interacts with the snapshot system """
 
     # normal snapshot
     SNAP_PREFIX = "apt-snapper-"
-    SNAPPER_TIME = "%a %d %b %Y %I:%M:%S %p %Z"
-    # backname when changing
-    BACKUP_PREFIX = SNAP_PREFIX + "old-root-"
+    SNAPPER_TIME = "%a %d %b %Y %I:%M:%S %p %Z" 
     PRE_ID_FILE = "/var/run/apt-btrfs-snapper-pre-id"
 
     def __init__(self): 
         self.commands = LowLevelCommands() 
 
     def snapshots_supported(self):
-        """ verify that the system supports apt btrfs snapshots
-            by checking if the right fs layout is used etc
+        """ verify that the system supports snapper
+            this is a limited check. more could be done
+            to ensure 100% that the user has snapper
+            configured on the root volume
         """
         # check for the helper binary
-        return os.path.exists("/usr/bin/snapper")
+        if not os.path.exists("/usr/bin/snapper"):
+            return False
+
+        DIR = '/etc/snapper/configs'
+ 
+        #does a snapper config exist
+        if not os.path.exists(DIR):
+            return False
+        return len([name for name in os.listdir(DIR)])
   
 
     def _get_now_str(self):
@@ -138,17 +153,17 @@ class AptBtrfsSnapper(object):
         return res
     
     def create_btrfs_root_snapshot_pre(self, additional_prefix=""):
-        id_file = open(self.PRE_ID_FILE, 'r')
-        existing = id_file.read() 
-        if existing:
-            self.delete_snapshot(existing.strip())
-            print("Delted orphaned snapshot " + existing.strip())
-        
         if os.path.exists(self.PRE_ID_FILE):
-            os.remove(self.PRE_ID_FILE)
+            id_file = open(self.PRE_ID_FILE, 'r')
+            existing = id_file.read() 
+            if existing:
+                self.delete_snapshot(existing.strip())
+                print("Deleted orphaned snapshot " + existing.strip())   
+            id_file.close()
+            os.remove(self.PRE_ID_FILE) 
+            
         id_file = open(self.PRE_ID_FILE, 'w+')
-        sid = self.create_btrfs_root_snapshot(additional_prefix, "pre") 
-        print("Created tmp file named " +  id_file.name)
+        sid = self.create_btrfs_root_snapshot(additional_prefix, "pre")  
         id_file.truncate()
         id_file.write(str(sid).strip())
         id_file.close()
@@ -157,12 +172,14 @@ class AptBtrfsSnapper(object):
     def create_btrfs_root_snapshot_post(self, additional_prefix=""):
         try:
             id_file = open(self.PRE_ID_FILE, 'r')
-        except FileNotFoundError:
+        except (OSError, IOError):  
             print("The pre snapshot ID was not found")
             return False
+        
         sid = id_file.read()
         sid = self.create_btrfs_root_snapshot(additional_prefix, "post", sid)
         os.remove(id_file.name)
+        id_file.close()
         return sid
         
     
@@ -188,12 +205,13 @@ class AptBtrfsSnapper(object):
         items = []
         for item in l:
             items.append(item['text'])
-        
+
         return items
 
     def print_btrfs_root_snapshots(self):
+        print("\nNote: Use a tool like snapper-gui to see what packages were installed")
         print("Available snapshots:")
-        print("  \n" + self.commands.btrfs_snapshot_list_pre_post());
+        print( self.commands.btrfs_snapshot_list_pre_post());
         return True
 
     def _parse_older_than_to_unixtime(self, timefmt):
@@ -228,24 +246,22 @@ class AptBtrfsSnapper(object):
             return False
         return res
     
-    def show_diff(self, snapshot, post_snapshot):
+    def show_diff(self, snapshot, snapshot2):
         id = self.convert_name_to_id(snapshot)
+        id2 = self.convert_name_to_id(snapshot2)
         print("Please wait...\n")
         if id != -1:
-            diff = self.commands.btrfs_snapshot_diff(id)
+            diff = self.commands.btrfs_snapshot_diff(id, id2)
             diff = diff.split("\n")
             for line in diff:
-                items = line.split(" ")
-                try:
-                    bytes_cnt = ""
-                    if items[0][0] == "+" or items[0][0] == "c":
-                        bytes_cnt = os.path.getsize(items[1])
-                        bytes_cnt = self.humansize(bytes_cnt)
-                    
-                    line = items[0][0] + "  " + bytes_cnt.ljust(10) + " " + items[1]
-                   
-                except IndexError:
-                    pass
+                items = line.split(" ") 
+                if(len(items[0]) < 1):
+                    continue;
+                if items[0][0] == "+" or items[0][0] == "c":
+                    bytes_cnt = (os.path.getsize(items[1]) if os.path.exists(items[1]) else 0);
+                else:
+                    bytes_cnt = 0;
+                line = items[0][0] + "   " +  (self.humansize(bytes_cnt) if bytes_cnt > 0 else "").ljust(10)  + " " +  items[1]
                 
                 print(line)
                 
@@ -258,28 +274,46 @@ class AptBtrfsSnapper(object):
         return res
     
     def convert_name_to_id(self, snapshot_name):
-        id=-1
+        sid=-1
         snapshot_name = snapshot_name.strip();
         try: 
             int(snapshot_name)
-            id=snapshot_name
+            sid=snapshot_name
         except ValueError:  
-            list = self.commands.btrfs_snapshot_list();
-            for item in list:
+            slist = self.commands.btrfs_snapshot_list();
+            for item in slist:
                 if item['name'].strip() == snapshot_name:
-                    id=item['id']
+                    sid=item['id']
                     
-        if id == -1:
+        if sid == -1:
             sys.stderr.write("Could not find a snapshot with the supplied name or id \n")
                     
-        return id;
+        return sid;
+
+    def update_installed_packages(self):
+        try:
+            id_file = open(self.PRE_ID_FILE, 'r')
+            sid = id_file.read().strip()  
+            if len(sid) < 1:
+                return True
+            
+            id_file.close()  
+        except (OSError, IOError):  
+            return True
+            
+        data = ""
+        lines = sys.stdin.readlines()
+        for line in lines:
+            data = data + os.path.basename(line.strip()) + "\n"; 
+        self.commands.btrfs_snapshot_userdata(sid, data)
+        return True
 
     def set_default(self, snapshot_name, backup=True):
         """ set new default """
-        id = self.convert_name_to_id(snapshot_name)
+        sid = self.convert_name_to_id(snapshot_name)
         
-        if id != -1:
-            ret = self.commands.btrfs_restore_snapshot(id) 
+        if sid != -1:
+            ret = self.commands.btrfs_restore_snapshot(sid) 
             return ret
         return False      
 
