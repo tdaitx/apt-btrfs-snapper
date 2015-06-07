@@ -101,7 +101,11 @@ class LowLevelCommands(object):
         return ret == 0;
     
     def btrfs_snapshot_diff(self, sid, id2):
-        ret = subprocess.check_output(["snapper", "status", sid+".."+id2 ], universal_newlines=True);
+        ret = 0
+        try:
+            ret = subprocess.check_output(["snapper", "status", sid+".."+id2 ], universal_newlines=True);
+        except:
+            print("The snapshots you supplied des not appear to exist.")
         return ret
     
     def btrfs_snapshot_userdata(self, sid, data):
