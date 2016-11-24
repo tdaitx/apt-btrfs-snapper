@@ -7,11 +7,6 @@ pyalldo=set -e; $(foreach py, $(PYTHON2) $(PYTHON3), $(py) $(1);)
 %:
 	dh $@ --with python2,python3
 
-ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-override_dh_auto_test:
-	$(call pyalldo, -m unittest discover -vv test/)
-endif
-
 override_dh_auto_build:
 	dh_auto_build
 	$(call py3sdo, setup.py build)

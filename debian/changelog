@@ -1,3 +1,10 @@
+apt-btrfs-snapper (0.4.0ubuntu1) xenial; urgency=medium
+
+  * debian/rules: remove override_dh_auto_test as all tests have been removed
+    for a long time now.
+
+ -- Tiago Stürmer Daitx <tiago.daitx@canonical.com>  Thu, 24 Nov 2016 17:43:59 +0000
+
 apt-btrfs-snapper (0.4.0) trusty; urgency=medium
 
   * Added pre and post methods for use with apt-get
